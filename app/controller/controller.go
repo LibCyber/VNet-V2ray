@@ -287,6 +287,7 @@ func (c *Controller) getUserFromRemote() error {
 					continue
 				}
 				account.ID = protocol.NewID(id)
+				account.AlterIDs = protocol.NewAlterIDs(account.ID, uint16(c.nodeInfo.V2AlterID))
 				user.Account = account
 				memoryUserList = append(memoryUserList, user)
 				log.Record(&log.GeneralMessage{

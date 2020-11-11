@@ -29,6 +29,9 @@ import (
 var (
 	configFile = flag.String("config", "", "Config file for V2Ray.")
 	version    = flag.Bool("version", false, "show version")
+	apiServer  = flag.String("api_host", "", "api host example: http://localhost.")
+	key        = flag.String("key", "", "key")
+	nodeId     = flag.Int("node_id", -1, "node_id")
 )
 
 type Config struct {
@@ -46,8 +49,13 @@ func main() {
 
 	configFile := getConfigFilePath()
 	if configFile == "" {
-		fmt.Println("config is not exist")
-		os.Exit(23)
+		if *apiServer == "" || *key == "" || *nodeId== -1 {
+			fmt.Println("config is not specified or file not exist")
+			os.Exit(23)	
+		} else {
+			config := &Config{ ApiServer: *apiServer, Key: *key, NodeId: int32(*nodeId) }
+			startWithConfig(config)
+		}
 	}
 
 	fmt.Println(fmt.Sprintf("using config file: %s", configFile))
@@ -163,7 +171,7 @@ func startWithConfig(c *Config) {
 
 	server, err := core.New(config)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Println(newError("unkown error!").Base(err).Error())
 		// Configuration error. Exit with a special value to prevent systemd from restarting.
 		os.Exit(23)
 	}

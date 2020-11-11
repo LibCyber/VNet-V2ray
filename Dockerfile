@@ -1,23 +1,35 @@
 ############################
 # STEP 1 build executable binary
 ############################
-FROM golang:alpine AS builder
-RUN apk update && apk add --no-cache git bash wget
+FROM golang AS builder
+ENV CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64 \
+    GO111MODULE=on
+RUN apt update && apt install -y git bash wget
 WORKDIR /go/src/v2ray.com/core
-RUN git clone --progress https://github.com/v2fly/v2ray-core.git . && \
-    bash ./release/user-package.sh nosource noconf codename=$(git describe --tags) buildname=docker-fly abpathtgz=/tmp/v2ray.tgz
+RUN git clone --progress https://github.com/LibCyber/VNet-V2ray.git /usr/local/go/src/github.com/LibCyber/VNet-V2ray
+RUN  cd  /usr/local/go/src/github.com/LibCyber/VNet-V2ray && \
+    go build -o bin/linux/vnet-v2ray -compiler gc -gcflags "all=-trimpath=${GOPATH}/src" -asmflags "all=-trimpath=${GOPATH}/src" -ldflags '-s -w' -tags '' v2ray.com/core/vnet
+
 ############################
 # STEP 2 build a small image
 ############################
-FROM alpine
+FROM alpine:3.8
+COPY --from=builder /usr/local/go/src/github.com/LibCyber/VNet-V2ray/bin/linux/vnet-v2ray /usr/bin/vnet-v2ray
 
-LABEL maintainer "V2Fly Community <admin@v2fly.org>"
-COPY --from=builder /tmp/v2ray.tgz /tmp
-RUN apk update && apk add ca-certificates && \
-    mkdir -p /usr/bin/v2ray && \
-    tar xvfz /tmp/v2ray.tgz -C /usr/bin/v2ray
+ARG TZ="Asia/Shanghai"
 
-#ENTRYPOINT ["/usr/bin/v2ray/v2ray"]
-ENV PATH /usr/bin/v2ray:$PATH
-CMD ["v2ray", "-config=/etc/v2ray/config.json"]
+ENV TZ ${TZ}
+ENV API_HOST=http://baidu.com \
+    KEY=geptpxzp8zwdatc5 \
+    NODE_ID=1
 
+RUN apk upgrade --update \
+    && apk add bash tzdata \
+    && apk add ca-certificates \
+    && ln -sf /usr/share/zoneinfo/${TZ} /etc/localtime \
+    && echo ${TZ} > /etc/timezone \
+    && rm -rf /var/cache/apk/*
+
+CMD /usr/bin/vnet-v2ray --api_host ${API_HOST} --key ${KEY} --node_id ${NODE_ID}
